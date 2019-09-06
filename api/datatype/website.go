@@ -2,10 +2,11 @@ package datatype
 
 import (
 	"encoding/xml"
-	. "github.com/journeymidnight/yig/error"
-	"github.com/journeymidnight/yig/helper"
 	"io"
 	"io/ioutil"
+
+	. "github.com/journeymidnight/yig/error"
+	"github.com/journeymidnight/yig/helper"
 )
 
 const MaxBucketWebsiteRulesCount = 100
@@ -56,27 +57,25 @@ type Redirect struct {
 	HttpRedirectCode     string   `xml:"HttpRedirectCode,omitempty"`
 }
 
-func (w *WebsiteConfiguration) Validate() (valid bool) {
+func (w *WebsiteConfiguration) Validate() (error error) {
 	if w.RedirectAllRequestsTo != nil {
-		if w.IndexDocument != nil || w.ErrorDocument != nil || w.RoutingRules != nil {
-			return
+		protocol := w.RedirectAllRequestsTo.Protocol
+		if protocol != "" && protocol != "http" && protocol != "https" {
+			return ErrInvalidWebsiteRedirectProtocol
 		}
-	} else if w.IndexDocument == nil {
-		return
-	} else if w.RoutingRules != nil {
-		if len(w.RoutingRules) == 0 || len(w.RoutingRules) > MaxBucketWebsiteRulesCount {
-			return
+	}
+	if w.RoutingRules != nil {
+		if len(w.RoutingRules) > MaxBucketWebsiteRulesCount {
+			return ErrExceededWebsiteRoutingRulesLimit
 		}
 		for _, r := range w.RoutingRules {
-			if r.Redirect.Protocol == "" && r.Redirect.HostName == "" && r.Redirect.ReplaceKeyPrefixWith == "" &&
-				r.Redirect.ReplaceKeyWith == "" && r.Redirect.HttpRedirectCode == "" {
-				return
-			} else if r.Redirect.ReplaceKeyPrefixWith != "" && r.Redirect.ReplaceKeyWith != "" {
-				return
+			protocol := r.Redirect.Protocol
+			if protocol != "" && protocol != "http" && protocol != "https" {
+				return ErrInvalidWebsiteRedirectProtocol
 			}
 		}
 	}
-	return true
+	return
 }
 
 func ParseWebsiteConfig(reader io.Reader) (*WebsiteConfiguration, error) {
@@ -90,6 +89,10 @@ func ParseWebsiteConfig(reader io.Reader) (*WebsiteConfiguration, error) {
 	if err != nil {
 		helper.ErrorIf(err, "Unable to parse website config xml body")
 		return nil, ErrMalformedWebsiteConfiguration
+	}
+	err = websiteConfig.Validate()
+	if err != nil {
+		return nil, err
 	}
 	return websiteConfig, nil
 }

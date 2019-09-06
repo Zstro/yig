@@ -149,6 +149,8 @@ const (
 	ErrInvalidStorageClass
 	ErrInvalidWebsiteConfiguration
 	ErrMalformedWebsiteConfiguration
+	ErrInvalidWebsiteRedirectProtocol
+	ErrExceededWebsiteRoutingRulesLimit
 )
 
 // error code to APIError structure, these fields carry respective
@@ -664,6 +666,16 @@ var ErrorCodeResponse = map[ApiErrorCode]ApiErrorStruct{
 		AwsErrorCode:   "MalformedWebsiteConfiguration",
 		Description:    "Cannot Marshal/Unmarshal XML of website configuration.",
 		HttpStatusCode: http.StatusConflict,
+	},
+	ErrInvalidWebsiteRedirectProtocol: {
+		AwsErrorCode:   "InvalidWebsiteRedirectProtocol",
+		Description:    "The protocol you specified in the website configuration is invalid.",
+		HttpStatusCode: http.StatusBadRequest,
+	},
+	ErrExceededWebsiteRoutingRulesLimit: {
+		AwsErrorCode:   "ExceededWebsiteRoutingRulesLimit",
+		Description:    "The quantity of the routing rules in the website configuration is exceeded.",
+		HttpStatusCode: http.StatusBadRequest,
 	},
 }
 
