@@ -7,8 +7,10 @@ import (
 	"fmt"
 	"github.com/journeymidnight/seaweedfs/weed/operation"
 	"github.com/journeymidnight/seaweedfs/weed/wdclient"
+	"github.com/journeymidnight/yig/backend"
 	"github.com/journeymidnight/yig/helper"
 	"github.com/journeymidnight/yig/log"
+	"github.com/journeymidnight/yig/meta/types"
 	"google.golang.org/grpc"
 	"io"
 	"mime/multipart"
@@ -35,18 +37,38 @@ type Storage struct {
 	httpClient    *http.Client
 }
 
-func NewSeaweedStorage(logger *log.Logger, config helper.Config) Storage {
-	clientId := fmt.Sprintf("YIG-%s", config.InstanceId)
-	logger.Logger.Println("Initializing Seaweedfs client:", clientId,
-		"masters:", config.SeaweedMasters)
+func Initialize(logger *log.Logger, config helper.Config) map[string]backend.Cluster {
+	clientID := fmt.Sprintf("YIG-%s", config.InstanceId)
+	clusters := make(map[string]backend.Cluster)
+	for _, masters := range config.SeaweedMasters {
+		storage := NewSeaweedStorage(logger, clientID, masters)
+		clusters[storage.ID()] = storage
+	}
+	return clusters
+}
+
+func PickCluster(clusters map[string]backend.Cluster, weights map[string]int,
+	size uint64, class types.StorageClass,
+	objectType types.ObjectType) (cluster backend.Cluster, pool string, err error) {
+
+	// TODO
+	for _, cluster := range clusters {
+		return cluster, "", nil
+	}
+	return nil, "", errors.New("no seaweedfs cluster configured")
+}
+
+func NewSeaweedStorage(logger *log.Logger, clientID string, masters []string) Storage {
+	logger.Logger.Println("Initializing Seaweedfs client:", clientID,
+		"masters:", masters)
 	seaweedClient := wdclient.NewMasterClient(context.Background(),
-		grpc.WithInsecure(), clientId, config.SeaweedMasters)
+		grpc.WithInsecure(), clientID, masters)
 	go seaweedClient.KeepConnectedToMaster()
 	seaweedClient.WaitUntilConnected() // FIXME some kind of timeout?
-	logger.Logger.Println("Seaweedfs client initialized")
+	logger.Logger.Println("Seaweedfs client initialized for", masters)
 	return Storage{
 		logger:        logger,
-		masters:       config.SeaweedMasters,
+		masters:       masters,
 		seaweedClient: seaweedClient,
 		httpClient: &http.Client{
 			Timeout: 3 * time.Minute,
@@ -57,8 +79,13 @@ func NewSeaweedStorage(logger *log.Logger, config helper.Config) Storage {
 	}
 }
 
-func (s Storage) ClusterID() string {
+func (s Storage) ID() string {
 	return strings.Join(s.masters, ",")
+}
+
+func (s Storage) GetUsage() (usage backend.Usage, err error) {
+	// TODO
+	return
 }
 
 func (s Storage) assignObject(poolName string) (result operation.AssignResult, err error) {
