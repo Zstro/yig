@@ -39,8 +39,8 @@ func (yig *YigStorage) pickClusterAndPool(bucket string, object string,
 
 	metaClusters, _ := yig.MetaStorage.GetClusters()
 	weights := make(map[string]int)
-	for clusterID, cluster := range metaClusters {
-		weights[clusterID] = cluster.Weight
+	for _, cluster := range metaClusters {
+		weights[cluster.Fsid] = cluster.Weight
 	}
 
 	objectType := types.ObjectTypeNormal
