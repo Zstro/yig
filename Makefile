@@ -11,12 +11,12 @@ build:
 	cd integrate && bash buildyig.sh $(BUILDDIR)
 
 build_internal:
-	go build $(URL)/$(REPO)
+	go build $(URL)/$(REPO) -tags ceph
 	bash plugins/build_plugins_internal.sh
-	go build $(PWD)/tools/admin.go
-	go build $(PWD)/tools/delete.go
-	go build $(PWD)/tools/getrediskeys.go
-	go build $(PWD)/tools/lc.go
+	go build $(PWD)/tools/admin.go -tags ceph
+	go build $(PWD)/tools/delete.go -tags ceph
+	go build $(PWD)/tools/getrediskeys.go -tags ceph
+	go build $(PWD)/tools/lc.go -tags ceph
 	cp -f $(PWD)/plugins/*.so $(PWD)/integrate/yigconf/plugins/
 
 pkg:
