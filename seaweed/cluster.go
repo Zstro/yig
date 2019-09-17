@@ -29,8 +29,8 @@ type uploadResult struct {
 	ETag  string `json:"eTag,omitempty"`
 }
 
-// Storage implements yig.storage.backend
-type Storage struct {
+// SeaweedfsCluster implements yig.backend.backend
+type SeaweedfsCluster struct {
 	logger        *log.Logger
 	masters       []string
 	seaweedClient *wdclient.MasterClient
@@ -58,7 +58,7 @@ func PickCluster(clusters map[string]backend.Cluster, weights map[string]int,
 	return nil, "", errors.New("no seaweedfs cluster configured")
 }
 
-func NewSeaweedStorage(logger *log.Logger, clientID string, masters []string) Storage {
+func NewSeaweedStorage(logger *log.Logger, clientID string, masters []string) SeaweedfsCluster {
 	logger.Logger.Println("Initializing Seaweedfs client:", clientID,
 		"masters:", masters)
 	seaweedClient := wdclient.NewMasterClient(context.Background(),
@@ -66,7 +66,7 @@ func NewSeaweedStorage(logger *log.Logger, clientID string, masters []string) St
 	go seaweedClient.KeepConnectedToMaster()
 	seaweedClient.WaitUntilConnected() // FIXME some kind of timeout?
 	logger.Logger.Println("Seaweedfs client initialized for", masters)
-	return Storage{
+	return SeaweedfsCluster{
 		logger:        logger,
 		masters:       masters,
 		seaweedClient: seaweedClient,
@@ -79,16 +79,16 @@ func NewSeaweedStorage(logger *log.Logger, clientID string, masters []string) St
 	}
 }
 
-func (s Storage) ID() string {
+func (s SeaweedfsCluster) ID() string {
 	return strings.Join(s.masters, ",")
 }
 
-func (s Storage) GetUsage() (usage backend.Usage, err error) {
+func (s SeaweedfsCluster) GetUsage() (usage backend.Usage, err error) {
 	// TODO
 	return
 }
 
-func (s Storage) assignObject(poolName string) (result operation.AssignResult, err error) {
+func (s SeaweedfsCluster) assignObject(poolName string) (result operation.AssignResult, err error) {
 	masterAddress := s.seaweedClient.GetMaster()
 	assignRequest := &operation.VolumeAssignRequest{
 		// TODO read from config
@@ -109,7 +109,7 @@ func (s Storage) assignObject(poolName string) (result operation.AssignResult, e
 	return *assignResult, nil
 }
 
-func (s Storage) formUploadBody(object io.Reader, objectName string) (body *bytes.Buffer,
+func (s SeaweedfsCluster) formUploadBody(object io.Reader, objectName string) (body *bytes.Buffer,
 	contentType string, bytesWritten uint64, err error) {
 
 	// limit object size because of cannyls
@@ -134,7 +134,7 @@ func (s Storage) formUploadBody(object io.Reader, objectName string) (body *byte
 	return body, writer.FormDataContentType(), uint64(n), nil
 }
 
-func (s Storage) Put(poolName string, object io.Reader) (objectName string,
+func (s SeaweedfsCluster) Put(poolName string, object io.Reader) (objectName string,
 	bytesWritten uint64, err error) {
 
 	assigned, err := s.assignObject(poolName)
@@ -173,7 +173,7 @@ func (s Storage) Put(poolName string, object io.Reader) (objectName string,
 	return assigned.Fid, bytesWritten, nil
 }
 
-func (s Storage) Append(poolName, existName string, objectChunk io.Reader,
+func (s SeaweedfsCluster) Append(poolName, existName string, objectChunk io.Reader,
 	offset int64) (objectName string, bytesWritten uint64, err error) {
 
 	var url string
@@ -225,7 +225,7 @@ func (s Storage) Append(poolName, existName string, objectChunk io.Reader,
 	return objectName, bytesWritten, nil
 }
 
-func (s Storage) GetReader(poolName, objectName string,
+func (s SeaweedfsCluster) GetReader(poolName, objectName string,
 	offset int64, length uint64) (reader io.ReadCloser, err error) {
 
 	url, err := s.seaweedClient.LookupFileId(objectName)
@@ -251,7 +251,7 @@ func (s Storage) GetReader(poolName, objectName string,
 
 // Corresponding to weed/server/volume_server_handlers_write.go,
 // function DeleteHandler, writeDeleteResult
-func (s Storage) Remove(poolName, objectName string) (err error) {
+func (s SeaweedfsCluster) Remove(poolName, objectName string) (err error) {
 	url, err := s.seaweedClient.LookupFileId(objectName)
 	if err != nil {
 		s.logger.Logger.Println("seaweedClient.LookupFileId error:", err)
