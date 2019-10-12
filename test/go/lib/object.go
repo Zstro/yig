@@ -29,6 +29,20 @@ func (s3client *S3Client) PutObject(bucketName, key, value string) (err error) {
 	return
 }
 
+func (S3Client *S3Client) PutObjectWithMetadata(bucketName, key, value string, metadata map[string]string) (err error) {
+	params := &s3.PutObjectInput{
+		Bucket: 	aws.String(bucketName),
+		Key: 		aws.String(key),
+		Body: 		bytes.NewReader([]byte(value)),
+		Metadata:  	aws.StringMap(metadata),
+	}
+
+	if _, err = S3Client.Client.PutObject(params); err != nil {
+		return err
+	}
+	return
+}
+
 func (s3client *S3Client) PutObjectPreSignedWithSpecifiedBody(bucketName, key, value string, expire time.Duration) (url string, err error) {
 	params := &s3.PutObjectInput{
 		Bucket: aws.String(bucketName),
