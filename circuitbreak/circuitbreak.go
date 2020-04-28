@@ -1,14 +1,12 @@
 package circuitbreak
 
 import (
-	//	"encoding/json"
+	"crypto/tls"
 	"errors"
 	"fmt"
-	//	"io/ioutil"
 	"net/http"
 	"sync"
 	"time"
-	"crypto/tls"
 )
 
 /*
